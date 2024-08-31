@@ -1,10 +1,10 @@
 package com.example.techtask.service.impl;
 
 import com.example.techtask.model.User;
-import com.example.techtask.model.enumiration.OrderStatus;
 import com.example.techtask.service.UserService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,24 +16,30 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User findUser() {
-        String jpql = "SELECT u FROM User u JOIN u.orders o " +
-                "WHERE FUNCTION('YEAR', o.createdAt) = 2003 " +
-                "GROUP BY u.id " +
-                "ORDER BY SUM(o.price * o.quantity) DESC";
+        String sql = "SELECT u.* FROM users u " +
+                "JOIN (SELECT user_id, SUM(price * quantity) AS total " +
+                "      FROM orders " +
+                "      WHERE order_status = 'DELIVERED' AND EXTRACT(YEAR FROM created_at) = 2003 " +
+                "      GROUP BY user_id " +
+                "      ORDER BY total DESC " +
+                "      LIMIT 1) o ON u.id = o.user_id";
 
-        return entityManager.createQuery(jpql, User.class)
-                .setMaxResults(1)
-                .getSingleResult();
+        Query query = entityManager.createNativeQuery(sql, User.class);
+        List<User> result = query.getResultList();
+
+        if (!result.isEmpty()) {
+            return result.get(0);
+        }
+        return null;
     }
 
     @Override
     public List<User> findUsers() {
-        String jpql = "SELECT DISTINCT u FROM User u JOIN u.orders o " +
-                "WHERE FUNCTION('YEAR', o.createdAt) = 2010 " +
-                "AND o.orderStatus = :paidStatus";
+        String sql = "SELECT DISTINCT u.* FROM users u " +
+                "JOIN orders o ON u.id = o.user_id " +
+                "WHERE o.order_status = 'PAID' AND EXTRACT(YEAR FROM o.created_at) = 2010";
 
-        return entityManager.createQuery(jpql, User.class)
-                .setParameter("paidStatus", OrderStatus.PAID)
-                .getResultList();
+        Query query = entityManager.createNativeQuery(sql, User.class);
+        return query.getResultList();
     }
 }

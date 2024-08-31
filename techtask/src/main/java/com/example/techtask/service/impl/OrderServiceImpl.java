@@ -1,15 +1,13 @@
 package com.example.techtask.service.impl;
 
 import com.example.techtask.model.Order;
-import com.example.techtask.model.enumiration.UserStatus;
 import com.example.techtask.service.OrderService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-
-import static com.example.techtask.model.enumiration.UserStatus.ACTIVE;
 
 
 @Service
@@ -20,17 +18,23 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public Order findOrder() {
-        String query = "SELECT o FROM Order o WHERE o.quantity > 1 ORDER BY o.createdAt DESC";
-        return entityManager.createQuery(query, Order.class)
-                .setMaxResults(1)
-                .getSingleResult();
+        String sql = "SELECT * FROM orders " +
+                "WHERE quantity > 1 " +
+                "ORDER BY created_at DESC " +
+                "LIMIT 1";
+
+        Query query = entityManager.createNativeQuery(sql, Order.class);
+        return (Order) query.getSingleResult();
     }
 
     @Override
     public List<Order> findOrders() {
-        String jpql = "SELECT o FROM Order o WHERE o.userId IN (SELECT u.id FROM User u WHERE u.userStatus =: ACTIVE) ORDER BY o.createdAt asc ";
-        return entityManager.createQuery(jpql, Order.class)
-                .setParameter("activeStatus", ACTIVE)
-                .getResultList();
+        String sql = "SELECT o.* FROM orders o " +
+                "JOIN users u ON o.user_id = u.id " +
+                "WHERE u.user_status = 'ACTIVE' " +
+                "ORDER BY o.created_at ASC";
+
+        Query query = entityManager.createNativeQuery(sql, Order.class);
+        return query.getResultList();
     }
 }
